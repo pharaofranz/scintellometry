@@ -1,12 +1,15 @@
 # Helper functions for VLBI readers (VDIF, Mark5B).
 import struct
 import warnings
+import io
 
+import numpy as np
 from astropy.utils import OrderedDict
 
 OPTIMAL_2BIT_HIGH = 3.3359
 eight_word_struct = struct.Struct('<8I')
 four_word_struct = struct.Struct('<4I')
+DTYPE_WORD = np.dtype('<u4')
 
 
 def make_parser(word_index, bit_index, bit_length):
@@ -294,3 +297,224 @@ def get_frame_rate(fh, header_class, thread_id=None):
         warnings.warn("Header time changed by more than 1 second?")
 
     return max_frame + 1
+
+
+class VLBIPayloadBase(object):
+
+    _size = None
+    _encoders = {}
+    _decoders = {}
+
+    def __init__(self, words, nchan=1, bps=2, complex_data=False):
+        """Container for decoding and encoding VDIF payloads.
+
+        Parameters
+        ----------
+        words : ndarray
+            Array containg LSB unsigned words (with the right size) that
+            encode the payload.
+        nchan : int
+            Number of channels in the data.  Default: 1.
+        bps : int
+            Number of bits per complete sample.  Default: 2.
+        complex_data : bool
+            Whether data is complex or float.  Default: False.
+        """
+        self.words = words
+        self.nchan = nchan
+        self.bps = bps
+        self.complex_data = complex_data
+        self.nsample = len(words) * (32 // self.bps) // self.nchan
+        if self._size is not None and self._size != self.size:
+            raise ValueError("Encoded data should have length {0}"
+                             .format(self._size))
+
+    @classmethod
+    def frombytes(cls, raw, *args, **kwargs):
+        """Set paiload by interpreting bytes."""
+        return cls(np.fromstring(raw, dtype=DTYPE_WORD), *args, **kwargs)
+
+    def tobytes(self):
+        """Convert payload to bytes."""
+        return self.words.tostring()
+
+    @classmethod
+    def fromfile(cls, fh, *args, **kwargs):
+        """Read payload from file handle and decode it into data.
+
+        Parameters
+        ----------
+        fh : filehandle
+            Handle to the file from which data is read
+        payloadsize : int
+            Number of bytes to read (default: as given in ``cls._payloadsize``.
+
+        Any other (keyword) arguments are passed on to the class initialiser.
+        """
+        payloadsize = kwargs.pop('payloadsize', cls._size)
+        if payloadsize is None:
+            raise ValueError("Payloadsize should be given as an argument "
+                             "if no default is defined on the class.")
+        s = fh.read(payloadsize)
+        if len(s) < payloadsize:
+            raise EOFError("Could not read full payload.")
+        return cls.frombytes(s, *args, **kwargs)
+
+    def tofile(self, fh):
+        return fh.write(self.tobytes())
+
+    @classmethod
+    def fromdata(cls, data, bps=2):
+        """Encode data as payload, using a given bits per second.
+
+        It is assumed that the last dimension is the number of channels.
+        """
+        complex_data = data.dtype.kind == 'c'
+        encoder = cls._encoders[bps, complex_data]
+        words = encoder(data.ravel())
+        return cls(words, nchan=data.shape[-1], bps=bps,
+                   complex_data=complex_data)
+
+    def todata(self, data=None):
+        """Decode the payload.
+
+        Parameters
+        ----------
+        data : ndarray or None
+            If given, used to decode the payload into.  It should have the
+            right size to store it.  Its shape is not changed.
+        """
+        decoder = self._decoders[self.bps, self.complex_data]
+        out = decoder(self.words, out=data)
+        return out.reshape(self.shape) if data is None else data
+
+    data = property(todata, doc="Decode the payload.")
+
+    @property
+    def shape(self):
+        return (self.nsample, self.nchan)
+
+    @property
+    def dtype(self):
+        return np.dtype(np.complex64 if self.complex_data else np.float32)
+
+    @property
+    def size(self):
+        """Size in bytes of payload."""
+        return len(self.words) * DTYPE_WORD.itemsize
+
+    def __eq__(self, other):
+        return (type(self) is type(other) and
+                np.all(self.words == other.words))
+
+
+class VLBIFrameBase(object):
+
+    _header_class = None
+    _payload_class = None
+
+    def __init__(self, header, payload, verify=True):
+        self.header = header
+        self.payload = payload
+        if verify:
+            self.verify()
+
+    def verify(self):
+        """Simple verification.  To be added to by subclasses."""
+        assert isinstance(self.header, self._header_class)
+        assert isinstance(self.payload, self._payload_class)
+        assert self.payloadsize // 4 == self.payload.words.size
+
+    @classmethod
+    def frombytes(cls, raw, *args, **kwargs):
+        """Read a frame set from a byte string.
+
+        Implemented via ``fromfile`` using BytesIO.  For reading from files,
+        use ``fromfile`` directly.
+        """
+        return cls.fromfile(io.BytesIO(raw), *args, **kwargs)
+
+    def tobytes(self):
+        return self.header.tobytes() + self.payload.tobytes()
+
+    @classmethod
+    def fromfile(cls, fh, *args, **kwargs):
+        verify = kwargs.pop('verify', True)
+        header = cls._header_class.fromfile(fh, verify=verify)
+        payload = cls._payload_class.fromfile(fh, *args, **kwargs)
+        return cls(header, payload, verify)
+
+    def tofile(self, fh):
+        return fh.write(self.tobytes())
+
+    @classmethod
+    def fromdata(cls, data, header, *args, **kwargs):
+        """Construct frame from data and header.
+
+        Parameters
+        ----------
+        data : ndarray
+            Array holding data to be encoded.
+        header : VLBIHeaderBase
+            Header for the frame.
+
+        *args, **kwargs : arguments
+            Additional arguments to help create the payload.
+
+        unless kwargs['verify'] = False, basic assertions that check the
+        integrity are made (e.g., that channel information and whether or not
+        data are complex are consistent between header and data).
+
+        Returns
+        -------
+        frame : VLBIFrameBase instance.
+        """
+        verify = kwargs.pop('verify', True)
+        payload = cls._payload_class.fromdata(data, *args, **kwargs)
+        return cls(header, payload, verify)
+
+    def todata(self, data=None):
+        return self.payload.todata(data)
+
+    data = property(todata, doc="Decode the payload")
+
+    @property
+    def shape(self):
+        return self.payload.shape
+
+    @property
+    def dtype(self):
+        return self.payload.dtype
+
+    @property
+    def words(self):
+        return np.hstack((np.array(self.header.words), self.payload.words))
+
+    @property
+    def size(self):
+        return self.header.size + self.payload.size
+
+    def __array__(self):
+        return self.payload.data
+
+    def __getitem__(self, item):
+        # Header behaves as a dictionary.
+        return self.header.__getitem__(item)
+
+    def keys(self):
+        return self.header.keys()
+
+    def __contains__(self, key):
+        return key in self.header.keys()
+
+    def __getattr__(self, attr):
+        try:
+            return self.__getattribute__(attr)
+        except AttributeError:
+            if attr in self.header._properties:
+                return getattr(self.header, attr)
+
+    def __eq__(self, other):
+        return (type(self) is type(other) and
+                self.header == other.header and
+                self.payload == other.payload)
