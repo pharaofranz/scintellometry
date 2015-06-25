@@ -229,6 +229,15 @@ class VLBIHeaderBase(object):
             raise KeyError("{0} header does not contain {1}"
                            .format(self.__class__.__name__, item))
 
+    def __getattr__(self, attr):
+        try:
+            return super(VLBIHeaderBase, self).__getattr__(attr)
+        except AttributeError:
+            if attr in self.keys():
+                return self[attr]
+            else:
+                raise
+            
     def keys(self):
         return self._header_parser.keys()
 

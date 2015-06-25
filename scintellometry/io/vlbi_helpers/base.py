@@ -81,5 +81,5 @@ class VLBIStreamBase(object):
         return ("<{s.__class__.__name__} name={s.name} offset={s.offset}\n"
                 "    nchan={s.nchan}, thread_ids={s.thread_ids}, "
                 "samples_per_frame={s.samples_per_frame}, bps={s.bps}\n"
-                "    sample_rate={s.sample_rate}, (start) time={h.time}>"
+                "    sample_rate={s.sample_rate}, (start) time={h.time.isot}>"
                 .format(s=self, h=self.header0))

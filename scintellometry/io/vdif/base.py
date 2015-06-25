@@ -153,7 +153,7 @@ class VDIFStreamBase(VLBIStreamBase):
 
     def __init__(self, fh_raw, header0, thread_ids):
         try:
-            sample_rate = header0.sample_rate
+            sample_rate = header0.bandwidth * 2
         except:
             sample_rate = None
         super(VDIFStreamBase, self).__init__(
