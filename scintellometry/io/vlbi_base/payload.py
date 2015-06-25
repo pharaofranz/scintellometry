@@ -1,7 +1,9 @@
 # Helper functions for VLBI readers (VDIF, Mark5B).
 import numpy as np
 
+# the high mag value for 2-bit reconstruction
 OPTIMAL_2BIT_HIGH = 3.3359
+FOUR_BIT_1_SIGMA = 2.95
 DTYPE_WORD = np.dtype('<u4')
 
 

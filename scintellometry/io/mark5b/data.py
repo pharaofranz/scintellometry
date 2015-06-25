@@ -6,7 +6,7 @@ from astropy.time import Time
 import astropy.units as u
 
 from .. import SequentialFile, header_defaults
-from ..vlbi_helpers import get_frame_rate, OPTIMAL_2BIT_HIGH
+from ..vlbi_base import get_frame_rate, OPTIMAL_2BIT_HIGH
 from .header import Mark5BHeader
 
 # the high mag value for 2-bit reconstruction
