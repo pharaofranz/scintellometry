@@ -5,7 +5,7 @@ import numpy as np
 import astropy.units as u
 from astropy.utils import lazyproperty
 
-from ..vlbi_helpers import get_frame_rate
+from ..vlbi_helpers import VLBIStreamBase
 from .header import VDIFHeader
 from .frame import VDIFFrame, VDIFFrameSet
 
@@ -146,69 +146,19 @@ class VDIFFileWriter(io.BufferedWriter):
         return data.tofile(self)
 
 
-class VDIFStreamBase(object):
+class VDIFStreamBase(VLBIStreamBase):
     """VDIF file wrapper, which combines threads into streams."""
-    def __init__(self, fh_raw, header, thread_ids):
-        self.fh_raw = fh_raw
-        self.header0 = header
-        self.thread_ids = thread_ids
-        self.nchan = header.nchan
-        self.nthread = len(thread_ids)
-        self.samples_per_frame = header.samples_per_frame
+
+    _frame_class = VDIFFrame
+
+    def __init__(self, fh_raw, header0, thread_ids):
         try:
-            self.frames_per_second = int(header.framerate.to(u.Hz).value)
-        except:  # Not known; e.g., legacy header.
-            fh_raw.seek(0)
-            self.frames_per_second = get_frame_rate(fh_raw, VDIFHeader)
-            fh_raw.seek(self._framesetsize)
-        self.offset = 0
-
-    # Providing normal File IO properties.
-    def readable(self):
-        return self.fh_raw.readable()
-
-    def writable(self):
-        return self.fh_raw.writable()
-
-    def seekable(self):
-        return self.fh_raw.readable()
-
-    def tell(self, offset=None, unit=None):
-        """Return offset (in samples or in the given unit)."""
-        if offset is None:
-            offset = self.offset
-
-        if unit is None:
-            return offset
-
-        if unit == 'frame_info':
-            full_frame_nr, extra = divmod(offset, self.samples_per_frame)
-            dt, frame_nr = divmod(full_frame_nr, self.frames_per_second)
-            return dt, frame_nr, extra
-
-        if unit == 'time':
-            return self.header0.time() + self.tell(u.s)
-
-        return (offset * u_sample).to(
-            unit, equivalencies=[(self.samples_per_frame * u.sample,
-                                  self.frames_per_second * u.Hz)])
-
-    def close(self):
-        return self.fh_raw.close()
-
-    @property
-    def closed(self):
-        return self.fh_raw.closed
-
-    @property
-    def name(self):
-        return self.fh_raw.name
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
+            sample_rate = header0.sample_rate
+        except:
+            sample_rate = None
+        super(VDIFStreamBase, self).__init__(
+            fh_raw=fh_raw, header0=header0, nchan=header0.nchan,
+            bps=header0.bps, thread_ids=thread_ids, sample_rate=sample_rate)
 
     def __repr__(self):
         return ("<{s.__class__.__name__} name={s.name} offset={s.offset}\n"

@@ -88,7 +88,7 @@ class TestMark5B(object):
         assert payload._size == 10000
         assert payload.size == 10000
         assert payload.shape == (5000, 8)
-        assert payload.dtype is np.float32
+        assert payload.dtype == np.float32
         assert np.all(payload.data[:3].astype(int) ==
                       np.array([[-3, -1, +1, -1, +3, -3, -3, +3],
                                 [-3, +3, -1, +3, -1, -1, -1, +1],
@@ -105,7 +105,7 @@ class TestMark5B(object):
 
     def test_frame(self):
         with mark5b.open('sample.m5b', 'rb') as fh:
-            header = mark5b.Mark5BHeader.fromfile(fh)
+            header = mark5b.Mark5BHeader.fromfile(fh, ref_mjd=57000.)
             payload = mark5b.Mark5BPayload.fromfile(fh, nchan=8, bps=2)
             fh.seek(0)
             frame = fh.read_frame(nchan=8, bps=2)
@@ -117,9 +117,11 @@ class TestMark5B(object):
                       np.array([[-3, -1, +1, -1, +3, -3, -3, +3],
                                 [-3, +3, -1, +3, -1, -1, -1, +1],
                                 [+3, -1, +3, +3, +1, -1, +3, -1]]))
-        frame2 = mark5b.Mark5BFrame.frombytes(frame.tobytes())
+        frame2 = mark5b.Mark5BFrame.frombytes(frame.tobytes(), ref_mjd=57000.,
+                                              nchan=frame.shape[1],
+                                              bps=frame.payload.bps)
         assert frame2 == frame
-        frame3 = mark5b.Mark5BFrame.fromdata(frame.data, frame.header)
+        frame3 = mark5b.Mark5BFrame.fromdata(frame.data, frame.header, bps=2)
         assert frame3 == frame
 
     def test_filestreamer(self):

@@ -28,18 +28,12 @@ def bcd_encode(value):
     return result
 
 
-def get_frame_rate(fh, header_class, thread_id=None):
-    """Returns the number of frames
-
-    Can be for a specific thread_id (by default just the first thread in
-    the first header).
-    """
+def get_frame_rate(fh, header_class):
+    """Returns the number of frames in one second of data."""
     fh.seek(0)
     header = header_class.fromfile(fh)
     assert header['frame_nr'] == 0
     sec0 = header.seconds
-    if thread_id is None and 'thread_id' in header:
-        thread_id = header['thread_id']
     while header['frame_nr'] == 0:
         fh.seek(header.payloadsize, 1)
         header = header_class.fromfile(fh)

@@ -7,7 +7,7 @@ from astropy import units as u
 from astropy.time import Time
 from astropy.utils import lazyproperty
 
-from ..vlbi_helpers import get_frame_rate
+from ..vlbi_helpers import VLBIStreamBase
 from .header import Mark5BHeader
 from .frame import Mark5BFrame
 
@@ -81,82 +81,10 @@ class Mark5BFileWriter(io.BufferedWriter):
         return data.tofile(self)
 
 
-class Mark5BStreamBase(object):
+class Mark5BStreamBase(VLBIStreamBase):
     """Mark5B file wrapper, which combines threads into streams."""
-    def __init__(self, fh_raw, header, nchan, bps, thread_ids,
-                 sample_rate=None):
-        self.fh_raw = fh_raw
-        self.header0 = header
-        self.nchan = nchan
-        self.bps = bps
-        self.thread_ids = thread_ids
-        self.nthread = nchan if thread_ids is None else len(thread_ids)
-        self.samples_per_frame = header.payloadsize * 8 // bps // nchan
-        if sample_rate is None:
-            fh_raw.seek(0)
-            self.frames_per_second = get_frame_rate(fh_raw, Mark5BHeader)
-            fh_raw.seek(self._frame.size)
-        else:
-            self.frames_per_second = (self.samples_per_frame *
-                                      sample_rate).to(u.Hz).value
-        self.offset = 0
 
-    # Providing normal File IO properties.
-    def readable(self):
-        return self.fh_raw.readable()
-
-    def writable(self):
-        return self.fh_raw.writable()
-
-    def seekable(self):
-        return self.fh_raw.readable()
-
-    def tell(self, offset=None, unit=None):
-        """Return offset (in samples or in the given unit)."""
-        if offset is None:
-            offset = self.offset
-
-        if unit is None:
-            return offset
-
-        if unit == 'frame_info':
-            full_frame_nr, extra = divmod(offset, self.samples_per_frame)
-            dt, frame_nr = divmod(full_frame_nr, self.frames_per_second)
-            return dt, frame_nr, extra
-
-        if unit == 'time':
-            return self.header0.time() + self.tell(u.s)
-
-        return (offset * u_sample).to(
-            unit, equivalencies=[(self.samples_per_frame * u.sample,
-                                  self.frames_per_second * u.Hz)])
-
-    def close(self):
-        return self.fh_raw.close()
-
-    @property
-    def closed(self):
-        return self.fh_raw.closed
-
-    @property
-    def name(self):
-        return self.fh_raw.name
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-
-    def __repr__(self):
-        return ("<{s.__class__.__name__} name={s.name} offset={s.offset}\n"
-                "    nthread={s.nthread}, "
-                "samples_per_frame={s.samples_per_frame}, nchan={s.nchan},\n"
-                "    station={h.station}, (start) time={h.time},\n"
-                "    bandwidth={h.bandwidth}, complex_data={c}, "
-                "bps={h.bps}, edv={h.edv}>"
-                .format(s=self, h=self.header0,
-                        c=self.header0['complex_data']))
+    _frame_class = Mark5BFrame
 
 
 class Mark5BStreamReader(Mark5BStreamBase):
