@@ -9,7 +9,7 @@ import numpy as np
 from astropy.time import Time
 import astropy.units as u
 
-from . import SequentialFile, header_defaults
+from .. import SequentialFile, header_defaults
 
 PAYLOADSIZE = 20000
 VALIDSTART = 96
