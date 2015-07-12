@@ -230,7 +230,8 @@ class Mark4Header(Mark4TrackHeader):
 
     _track_header = Mark4TrackHeader
     _properties = (Mark4TrackHeader._properties +
-                   ('ntrack', 'fanout', 'nchan', 'bps'))
+                   ('ntrack', 'fanout', 'nchan', 'bps',
+                    'framesize', 'payloadsize'))
     _dtypes = {1: 'b',
                2: 'u1',
                4: 'u1',
@@ -271,6 +272,17 @@ class Mark4Header(Mark4TrackHeader):
     def fromfile(cls, fh, ntrack, decade=None, verify=True):
         """Read Mark 4 header from file.
 
+        Parameters
+        ----------
+        fh : filehandle
+            To read header from.
+        ntrack : int
+            Number of Mark 4 bitstreams.
+        decade : int, or None
+            Decade the observations were taken (needed to remove ambiguity in
+            the Mark 4 time stamp).
+        verify : bool
+            Whether to do basic verification of integrity.  Default: `True`.
         """
         dtype = cls._stream_dtype(ntrack)
         size = ntrack * 5 * 32 // 8
@@ -330,9 +342,18 @@ class Mark4Header(Mark4TrackHeader):
         """Payloadsize; missing pieces are the header bytes."""
         return self.framesize - self.size
 
+    @payloadsize.setter
+    def payloadsize(self, payloadsize):
+        self.framesize = payloadsize + self.size
+
     @property
     def framesize(self):
         return self.ntrack * PAYLOADSIZE // 8
+
+    @framesize.setter
+    def framesize(self, framesize):
+        assert framesize * 8 % PAYLOADSIZE == 0
+        self.ntrack = framesize * 8 // PAYLOADSIZE
 
     @property
     def fanout(self):
