@@ -31,8 +31,8 @@ def test_crc():
     bitstream = np.array([((istream & (1 << bit)) != 0)
                           for bit in range(37*4-1, -1, -1)], np.bool)
     crcstream = crc12(bitstream)
-    crc = np.bitwise_or.reduce(crcstream.astype(np.uint32)
-                               << np.arange(11, -1, -1))
+    crc = np.bitwise_or.reduce(crcstream.astype(np.uint32) <<
+                               np.arange(11, -1, -1))
     assert '{:03x}'.format(crc) == crc_expected
     fullstream = np.hstack((bitstream, crcstream))
     assert crc12.check(fullstream)
