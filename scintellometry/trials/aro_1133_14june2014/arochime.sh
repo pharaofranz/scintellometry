@@ -19,7 +19,7 @@ cd $PBS_O_WORKDIR
 export PYTHON_EGG_CACHE=/scratch2/p/pen/franzk/
 
 # PIN THE MPI DOMAINS ACCORDING TO OMP
-export I_MPI_PIN_DOMAIN=${omp}
+export I_MPI_PIN_DOMAIN=omp
 
 # EXECUTION COMMAND; -np = nodes*ppn
 echo "----------------------"
