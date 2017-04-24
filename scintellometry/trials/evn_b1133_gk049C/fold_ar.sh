@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l nodes=16:ppn=8,walltime=1:40:00
+#PBS -l nodes=16:ppn=8,walltime=0:20:00
 #PBS -N gk049c_Ar_64s
 #PBS -m abe
 
@@ -32,7 +32,20 @@ echo "np ${NP}, rpn ${RPN}, omp ${OMP}"
 # EXECUTION COMMAND; -np = nodes*processes_per_nodes; --byhost forces a round robin of nodes.
 export OMP_NUM_THREADS=${OMP}
 export PYTHONPATH=/home/p/pen/franzk/git/scintellometry:/home/p/pen/franzk/git/pulsar:/home/p/pen/franzk/git/baseband:${PYTHONPATH}
-time mpirun -np ${NP} /scinet/gpc/tools/Python/Python278-shared-intel/bin/python ${run_from}/reduce_data.py --telescope ao -d 2017-03-04T04:02:10 --duration 64 --ntbin 8 -v -v -v -v --dedisperse incoherent --conf ${run_from}/observations.conf
+
+#to fold AR -- works
+time mpirun -np ${NP} /scinet/gpc/tools/Python/Python278-shared-intel/bin/python ${run_from}/reduce_data.py --telescope ao -d 2017-03-04T04:02:10 --duration 64 --ntbin 8 -v -v -v -v --dedisperse incoherent --conf ${run_from}/observations.conf --nchan 100
+
+#to fold WB -- doesn't work. Get startime wrong (should be 2017, reports 2014)
+# the folded spectra also zero all over, probably because no polycos can be found for time
+#time mpirun -np ${NP} /scinet/gpc/tools/Python/Python278-shared-intel/bin/python ${run_from}/reduce_data.py --telescope wb -d 2017-03-04T04:02:10 --duration 64 --ntbin 8 -v -v -v -v --dedisperse incoherent --conf ${run_from}/observations.conf --nchan 4
+
+#to fold EF -- doesn't work. I get
+#File "/home/p/pen/franzk/git/scintellometry/scintellometry/io/vlbi_helpers.py", line 21, i
+#n <lambda>
+#return lambda x: (x[word_index] >> bit_index) & mask
+#IndexError: tuple index out of range
+#mpirun -np ${NP} /scinet/gpc/tools/Python/Python278-shared-intel/bin/python ${run_from}/reduce_data.py --telescope ef -d 2017-03-04T04:02:10 --duration 64 --ntbin 8 -v -v -v -v --dedisperse incoherent --conf ${run_from}/observations.conf --nchan 128
 
 echo "ENDED"
 date
