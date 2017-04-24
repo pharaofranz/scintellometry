@@ -17,7 +17,7 @@ from mpi4py import MPI
 def reduce(telescope, obskey, tstart, tend, nchan, ngate, ntbin, ntw_min,
            rfi_filter_raw=None, fref=None, dedisperse=None,
            rfi_filter_power=None, do_waterfall=True, do_foldspec=True,
-           verbose=True):
+           verbose=True, conf='observations.conf'):
 
     comm = MPI.COMM_WORLD
     if dedisperse == 'None':
@@ -31,7 +31,7 @@ def reduce(telescope, obskey, tstart, tend, nchan, ngate, ntbin, ntw_min,
     if dedisperse is not None and fref is None:
         raise ValueError("Need to give reference frequency to dedisperse to")
 
-    obs = obsdata()
+    obs = obsdata(conf)
     if verbose > 3 and comm.rank == 0:
         print(obs)
     # find nearest observation to 'date',
@@ -220,6 +220,9 @@ def CL_parser():
         "They specify which observation run to process "
         "(consistent with [telescope], [[date]] entries\n"
         "in observations.conf), and the start and finish timestamps.")
+    d_parser.add_argument(
+        '--conf', type=str, default='observations.conf',
+        help='File that contains the observation setup, i.e. observations.conf.')
     d_parser.add_argument(
         '-t','--telescope', type=str, default='gmrt',
         help="The data to reduce. One of ['gmrt', 'kairo', 'lofar', 'arochime'].")
