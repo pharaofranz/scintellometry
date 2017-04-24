@@ -99,6 +99,8 @@ class Mark4Data(SequentialFile):
             self.npol = self.nvlbichan if channels is None else 1
         if not (1 <= self.npol <= 2):
             warnings.warn("Should use 1 or 2 channels for folding!")
+        if not isinstance(reftime, Time):
+            reftime = Time('J'+str(reftime), scale='utc')
         # PAYLOADSIZE refers to the number of bits per frame per VLBI channel.
         self.framesize = PAYLOADSIZE * self.ntrack // 8
         # Comment from C code:
@@ -504,5 +506,23 @@ def decode_2bit_64track_fanout4(frame, channels=None):
     # Another transpose ensures samples are the first dimension.
     return lut2bit1[frame.T].reshape(frame.shape[1], -1).T
 
+def decode_2bit_32track_fanout2(frame, channels=None):
+    """Decode the frame, assuming 32 tracks using 2 bits, fan-out 2.
+
+    Optionally select some VLBI channels (by default, all 8 are returned).
+    """
+    # Bitwise reordering of tracks, to align sign and magnitude bits,
+    # reshaping to get VLBI channels in sequential, but wrong order.
+    frame = reorder32(frame).reshape(-1, 8)
+    # Correct ordering, at the same time possibly selecting specific channels.
+    reorder = np.array([0, 2, 1, 3, 4, 6, 5, 7])
+    frame = frame[:, reorder if channels is None else reorder[channels]]
+    # The look-up table splits each data byte into 4 measurements.
+    # Using transpose ensures channels are first, then time samples, then
+    # those 4 measurements, so the reshape orders the samples correctly.
+    # Another transpose ensures samples are the first dimension.
+    return lut2bit1[frame.T].reshape(frame.shape[1], -1).T
+
 # Decoders keyed by (nbit, ntrack, fanout).
-DECODERS = {(2, 64, 4): decode_2bit_64track_fanout4}
+DECODERS = {(2, 64, 4): decode_2bit_64track_fanout4,
+            (2, 32, 2): decode_2bit_32track_fanout2}
