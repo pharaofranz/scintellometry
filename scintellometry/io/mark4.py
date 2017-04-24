@@ -521,7 +521,7 @@ def decode_2bit_32track_fanout2(frame, channels=None):
     # Using transpose ensures channels are first, then time samples, then
     # those 4 measurements, so the reshape orders the samples correctly.
     # Another transpose ensures samples are the first dimension.
-    return lut2bit1[frame.T].reshape(frame.shape[1], -1).T
+    return lut2bit3[frame.T].reshape(frame.shape[1], -1).T
 
 # Decoders keyed by (nbit, ntrack, fanout).
 DECODERS = {(2, 64, 4): decode_2bit_64track_fanout4,
