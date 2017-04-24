@@ -3,11 +3,13 @@ from __future__ import division, print_function
 
 import numpy as np
 import astropy.units as u
+from os.path import abspath
 
-from reduction import reduce, CL_parser
+from scintellometry.meta.reduction import reduce, CL_parser
 
 MAX_RMS = 4.
-_fref = 150. * u.MHz  # ref. freq. for dispersion measure
+_fref = 325. * u.MHz  # ref. freq. for dispersion measure
+
 
 
 def rfi_filter_raw(raw, nchan):
@@ -26,6 +28,7 @@ def rfi_filter_power(power):
 if __name__ == '__main__':
     args = CL_parser()
     args.verbose = 0 if args.verbose is None else sum(args.verbose)
+    args.conf = abspath(args.conf)
     if args.fref is None:
         args.fref = _fref
 
@@ -64,4 +67,5 @@ if __name__ == '__main__':
         nchan=args.nchan, ngate=args.ngate, ntbin=args.ntbin,
         ntw_min=args.ntw_min, rfi_filter_raw=args.rfi_filter_raw,
         do_waterfall=args.waterfall, do_foldspec=args.foldspec,
-        dedisperse=args.dedisperse, fref=args.fref, verbose=args.verbose)
+        dedisperse=args.dedisperse, fref=args.fref, verbose=args.verbose,
+        conf=args.conf)
