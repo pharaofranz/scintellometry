@@ -466,8 +466,8 @@ def init_luts():
     lut1bit = lut2level[(b >> i) & 1]
     i = np.arange(4)
     # fanout 1 @ 8/16t, fanout 4 @ 32/64t
-    s = i*2
-    m = s+1
+    s = i*2 # 0 2 4 6
+    m = s+1 # 1 3 5 7
     lut2bit1 = lut4level[(b >> s & 1) +
                          (b >> m & 1) * 2]
     # fanout 2 @ 8/16t, fanout 1 @ 32/64t
@@ -511,17 +511,33 @@ def decode_2bit_32track_fanout2(frame, channels=None):
 
     Optionally select some VLBI channels (by default, all 8 are returned).
     """
-    # Bitwise reordering of tracks, to align sign and magnitude bits,
-    # reshaping to get VLBI channels in sequential, but wrong order.
-    frame = reorder32(frame).reshape(-1, 8)
-    # Correct ordering, at the same time possibly selecting specific channels.
-    reorder = np.array([0, 2, 1, 3, 4, 6, 5, 7])
-    frame = frame[:, reorder if channels is None else reorder[channels]]
-    # The look-up table splits each data byte into 4 measurements.
+    # reshaping to have 4*8=32-bit words
+    frame = frame.view(np.uint8).reshape(-1, 4)
+    # The look-up table splits each data byte into 2 measurements for 2 channels 
+    # (i.e 2 pols), items 0 and 1 are measurement 1, 2+3 measurement 2 for same chans
     # Using transpose ensures channels are first, then time samples, then
-    # those 4 measurements, so the reshape orders the samples correctly.
-    # Another transpose ensures samples are the first dimension.
-    return lut2bit3[frame.T].reshape(frame.shape[1], -1).T
+    # those 4 measurements, so the first reshape splits the two measurements
+    # the transpose ensures samples are the first dimension, channels are the last.
+    # transpose to (samples, 2times,2pols,4chans)
+    frame=lut2bit3[frame.T].reshape(4,frame.shape[0], 2, 2).transpose(1,2,3,0)
+    # next reshape puts pols and chans in order, last one orders time samples
+    frame=frame.reshape(frame.shape[0], 2, 8).reshape(-1,8)
+
+    # an (even) more clunky way to do (I think) the same thing:
+    #frame=lut2bit3[frame.T]
+    #chan1 = frame[0,:,(0,2)].T.ravel()
+    #chan2 = frame[1,:,(0,2)].T.ravel()
+    #chan3 = frame[2,:,(0,2)].T.ravel()
+    #chan4 = frame[3,:,(0,2)].T.ravel()
+    #chan5 = frame[0,:,(1,3)].T.ravel()
+    #chan6 = frame[1,:,(1,3)].T.ravel()
+    #chan7 = frame[2,:,(1,3)].T.ravel()
+    #chan8 = frame[3,:,(1,3)].T.ravel()
+    #frame=np.array([chan1, chan2, chan3, chan4, chan5, chan6, chan7, chan8]).T
+
+    # Correct ordering, at the same time possibly selecting specific channels.
+    reorder = np.array([0, 1, 2, 3, 4, 5, 6, 7])
+    return frame[:, reorder if channels is None else reorder[channels]]
 
 # Decoders keyed by (nbit, ntrack, fanout).
 DECODERS = {(2, 64, 4): decode_2bit_64track_fanout4,
