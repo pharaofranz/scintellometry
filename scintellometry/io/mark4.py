@@ -209,7 +209,6 @@ class Mark4Data(SequentialFile):
 
         if self.npol == 2:
             data = data.view('f4,f4')
-
         return data if self.decimation == 1 else data[::self.decimation]
 
     def ntint(self, nchan):
@@ -522,19 +521,6 @@ def decode_2bit_32track_fanout2(frame, channels=None):
     frame=lut2bit3[frame.T].reshape(4,frame.shape[0], 2, 2).transpose(1,2,3,0)
     # next reshape puts pols and chans in order, last one orders time samples
     frame=frame.reshape(frame.shape[0], 2, 8).reshape(-1,8)
-
-    # an (even) more clunky way to do (I think) the same thing:
-    #frame=lut2bit3[frame.T]
-    #chan1 = frame[0,:,(0,2)].T.ravel()
-    #chan2 = frame[1,:,(0,2)].T.ravel()
-    #chan3 = frame[2,:,(0,2)].T.ravel()
-    #chan4 = frame[3,:,(0,2)].T.ravel()
-    #chan5 = frame[0,:,(1,3)].T.ravel()
-    #chan6 = frame[1,:,(1,3)].T.ravel()
-    #chan7 = frame[2,:,(1,3)].T.ravel()
-    #chan8 = frame[3,:,(1,3)].T.ravel()
-    #frame=np.array([chan1, chan2, chan3, chan4, chan5, chan6, chan7, chan8]).T
-
     # Correct ordering, at the same time possibly selecting specific channels.
     reorder = np.array([0, 1, 2, 3, 4, 5, 6, 7])
     return frame[:, reorder if channels is None else reorder[channels]]
