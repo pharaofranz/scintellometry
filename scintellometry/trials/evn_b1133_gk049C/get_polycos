@@ -7,7 +7,7 @@ TZRFREQ 1400.
 TZRMJD 56000.
 TZRSITE coe
 EOD
-for site in 'ao' 'jb' 'eff' 'wsrt'; do
+for site in 'ao' 'jb' 'eff' 'wsrt' 'vla'; do
   tempo2 -tempo1 -f psr$psr.par -polyco "57815 57817 300 12 12 $site 327.25"
   mv polyco_new.dat data/polyco${psr}_$site.dat
   rm polyco.tim newpolyco.dat

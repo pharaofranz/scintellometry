@@ -518,9 +518,12 @@ def decode_2bit_32track_fanout2(frame, channels=None):
     # those 4 measurements, so the first reshape splits the two measurements
     # the transpose ensures samples are the first dimension, channels are the last.
     # transpose to (samples, 2times,2pols,4chans)
-    frame=lut2bit3[frame.T].reshape(4,frame.shape[0], 2, 2).transpose(1,2,3,0)
+    #frame=lut2bit3[frame.T].reshape(4,frame.shape[0], 2, 2).transpose(1,2,3,0)
     # next reshape puts pols and chans in order, last one orders time samples
-    frame=frame.reshape(frame.shape[0], 2, 8).reshape(-1,8)
+    #frame=frame.reshape(frame.shape[0], 2, 8).reshape(-1,8)
+    # martens
+    frame = (lut2bit3.take(frame, axis=0).reshape(-1, 4, 2, 2)
+             .transpose(3, 1, 0, 2).reshape(8, -1).T)
     # Correct ordering, at the same time possibly selecting specific channels.
     reorder = np.array([0, 1, 2, 3, 4, 5, 6, 7])
     return frame[:, reorder if channels is None else reorder[channels]]
