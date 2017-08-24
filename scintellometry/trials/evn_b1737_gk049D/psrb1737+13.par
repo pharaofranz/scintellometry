@@ -1,0 +1,18 @@
+PSRJ            J1740+1311               
+RAJ             17:40:07.3455            1.200e-03 
+DECJ            +13:11:56.69             3.000e-02 
+DM              48.66823                 4.300e-04 
+PEPOCH          48262.00                 
+F0              1.245252064335           5.000e-12 
+F1              -2.250493E-15            1.800e-20 
+PMRA            -22                      2.000e+00 
+PMDEC           -20                      2.000e+00 
+POSEPOCH        48262.00                 
+DMEPOCH         56687                    
+F2              1.66E-26                 4.000e-28 
+RM              64.4                     1.600e+00 
+EPHVER          2                        
+UNITS           TDB                      
+TZRFREQ 1400.
+TZRMJD 56000.
+TZRSITE coe
