@@ -17,7 +17,7 @@ from astropy.coordinates import SkyCoord
 from astropy.time import Time, TimeDelta
 
 from astropy.extern.configobj import configobj
-from astropy.utils.compat.odict import OrderedDict
+from collections import OrderedDict
 
 from scintellometry import io
 
@@ -115,6 +115,7 @@ FILE_LIST_PICKERS = {
     'arochime-raw': vlbi_files,
     'arochime-vdif': vlbi_files,
     'arochime-invpfb': vlbi_files,
+    'arochime-raw-invpfb': vlbi_files,
     'dada': dada_files,
     'jbdada': dada_files,
     'mark4': vlbi_files,
