@@ -1,11 +1,12 @@
 #!/bin/bash
-#PBS -l nodes=32:ppn=8,walltime=0:45:00
-#PBS -N gk049c_Ar_fold_all_scans_chans
+#PBS -l nodes=256:ppn=8,walltime=8:45:00
+#PBS -N gk049c_Ar_fold_all_scans_chans_Tres5s
 #PBS -m abe
 
-nodes=32
-PPN=8
-let NP=$nodes*$PPN
+nodes=256
+PPN=1 # be careful about memory usage
+source /home/p/pen/franzk/software/scripts/prep_rank_machine_file.sh $PPN intel
+#let NP=$nodes*$PPN
 OMP=1 # number of threads per node (4 available)
 
 module purge
@@ -19,8 +20,10 @@ module load fftw/3.3.4-intel-impi
 # (this is where the fold* scripts used to live..., now they're in 
 # scintellometry/trials/evn_b1133_gk049C on branch 1133-trials )
 cd $PBS_O_WORKDIR
+mkdir -p $PBS_O_WORKDIR/joboutput/
+rm -rf $PBS_O_WORKDIR/joboutput/output.tee
 
-# directory that contains reduce_data.py and observations.conf (actually use observations.conf in $PBS_O_WORKDIR)
+# directory that contains reduce_data.py and observations.conf
 export run_from=/home/p/pen/franzk/git/scintellometry/scintellometry/trials/evn_b1133_gk049C/
 
 # got a funny error regarding python eggs, maybe cannot write to $HOME from compute nodes?
@@ -51,12 +54,12 @@ export PYTHONPATH=/home/p/pen/franzk/git/scintellometry:/home/p/pen/franzk/git/p
 times=(2017-03-04T04:02:10 2017-03-04T04:30:39 2017-03-04T04:44:32 2017-03-04T04:54:47 2017-03-04T05:12:47 2017-03-04T05:23:02 2017-03-04T05:41:00 2017-03-04T05:51:15 2017-03-04T06:11:32 2017-03-04T06:21:47)
 #times=(scan2 scan8 scan12 scan13 scan19 scan20 scan25 scan26 scan31 scan32)
 duration=(1100 560 560 760 400 890 560 650 540 480)
-ntimebins=(110 56 56 76 40 89 56 65 54 48) #gives 10 second resolution
+ntimebins=(220 112 112 152 80 178 112 130 108 96) #gives 5 second resolution
 channels=(0,1 2,3 4,5 6,7)
+#channels=(0,1)
 dirs=(chan0-1 chan2-3 chan4-5 chan6-7)
-#conf_file=${PBS_O_WORKDIR}/observations.conf
 conf_file=${run_from}/observations.conf
-nchan=8000
+nchan=8000 # powers of 2 don't work!
 
 #loop through all channels and times.
 tcount=0
@@ -92,13 +95,14 @@ for t in ${times[@]};do
 	cd ${PBS_O_WORKDIR}/ar/${dirs[${ccount}]}
 	echo "Working in `pwd`"
 	let ccount=${ccount}+1
-	mpirun -np ${NP} -ppn ${PPN} /scinet/gpc/tools/Python/Python278-shared-intel/bin/python ${run_from}/reduce_data.py --telescope ao -d ${t} --duration ${dur} --ntbin ${nt} --dedisperse incoherent --nchan ${nchan} --conf ${conf_file}
+	mpirun -np ${NP} -hostfile ${MACHINES_FILE} -machinefile ${RANKS_FILE}  /scinet/gpc/tools/Python/Python278-shared-intel/bin/python ${run_from}/reduce_data.py --telescope ao -d ${t} --duration ${dur} --ntbin ${nt} --dedisperse incoherent --nchan ${nchan} --conf ${conf_file} 2>&1 | tee --append $PBS_O_WORKDIR/joboutput/output.tee
     done
     # put channel names back to 0,1 in conf file
     last_chan=6,7
     first_chan=0,1
     sed -i -e "s;channels = ${last_chan};channels = ${first_chan};g" ${conf_file}
 done
+#-ppn ${PPN}
 
 echo "ENDED"
 date
